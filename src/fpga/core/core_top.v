@@ -287,16 +287,6 @@ module core_top (
   assign cram1_ub_n              = 1;
   assign cram1_lb_n              = 1;
 
-  assign dram_a                  = 'h0;
-  assign dram_ba                 = 'h0;
-  assign dram_dq                 = {16{1'bZ}};
-  assign dram_dqm                = 'h0;
-  assign dram_clk                = 'h0;
-  assign dram_cke                = 'h0;
-  assign dram_ras_n              = 'h1;
-  assign dram_cas_n              = 'h1;
-  assign dram_we_n               = 'h1;
-
   assign sram_a                  = 'h0;
   assign sram_dq                 = {16{1'bZ}};
   assign sram_oe_n               = 1;
@@ -514,17 +504,22 @@ module core_top (
     .o_sd_spi_mosi(),
     .i_sd_spi_miso(),
     // SDRAM
-    .o_SDRAM_CKE(),
-    .o_SDRAM_WEn(),
-    .o_SDRAM_CASn(),
-    .o_SDRAM_RASn(),
-    .o_SDRAM_A(),
-    .o_SDRAM_BA(),
-    .o_SDRAM_DQM(),
-    .i_SDRAM_DQ(),
-    .o_SDRAM_DQ(),
-    .o_SDRAM_DQ_OE()
+    .o_SDRAM_CKE(dram_cke),
+    .o_SDRAM_WEn(dram_we_n),
+    .o_SDRAM_CASn(dram_cas_n),
+    .o_SDRAM_RASn(dram_ras_n),
+    .o_SDRAM_A(dram_a),
+    .o_SDRAM_BA(dram_ba),
+    .o_SDRAM_DQM(dram_dqm),
+    .i_SDRAM_DQ(dram_dq),
+    .o_SDRAM_DQ(dram_dq_out),
+    .o_SDRAM_DQ_OE(dram_dq_oe)
   );
+
+  wire [15:0] dram_dq_out;
+  wire dram_dq_oe;
+  assign dram_dq = dram_dq_oe ? dram_dq_out : 16'hzzzz;
+  assign dram_clk = clk_8mhz_90deg;
 
   assign cart_tran_bank0[6]  = uart_txd;
 
