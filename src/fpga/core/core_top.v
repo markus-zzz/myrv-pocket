@@ -261,7 +261,7 @@ module core_top (
   assign cart_tran_bank2_dir     = 1'b0;
   assign cart_tran_bank1         = 8'hzz;
   assign cart_tran_bank1_dir     = 1'b0;
-  assign cart_tran_bank0         = 4'hf;
+  //assign cart_tran_bank0         = 4'hf;
   assign cart_tran_bank0_dir     = 1'b1;
   assign cart_tran_pin30         = 1'b0;  // reset or cs2, we let the hw control it by itself
   assign cart_tran_pin30_dir     = 1'bz;
@@ -974,24 +974,35 @@ module core_top (
       .b_dout(dataslot_table_rd_data_cpu)
   );
 
-  // 8KB of DP track memory for 1541. Fed by bridge, read by 1541
-  bram_block_dp #(
-      .DATA(32),
-      .ADDR(11)
-  ) u_bridge_1541_track_ram (
-      .a_clk(clk_74a),
-      .a_wr(bridge_wr && bridge_addr[31:28] == 4'h9),
-      .a_addr(bridge_addr[31:2]),
-      .a_din({
-        bridge_wr_data[7:0], bridge_wr_data[15:8], bridge_wr_data[23:16], bridge_wr_data[31:24]
-      }),
-      .a_dout(  /* NC */),
+  wire uart_txd;
 
-      .b_clk (clk_8mhz),
-      .b_wr  (1'b0),
-      .b_addr(c1541_track_mem_addr),
-      .b_din (32'h0),
-      .b_dout(c1541_track_mem_data)
+  top u_top(
+    .clk(clk_8mhz),
+    .rst(rst),
+    // GPIO
+    .i_gpio(),
+    .o_ebreak(),
+    // UART
+    .i_rxd(),
+    .o_txd(uart_txd),
+    // SDCARD
+    .o_sd_spi_sclk(),
+    .o_sd_spi_cs(),
+    .o_sd_spi_mosi(),
+    .i_sd_spi_miso(),
+    // SDRAM
+    .o_SDRAM_CKE(),
+    .o_SDRAM_WEn(),
+    .o_SDRAM_CASn(),
+    .o_SDRAM_RASn(),
+    .o_SDRAM_A(),
+    .o_SDRAM_BA(),
+    .o_SDRAM_DQM(),
+    .i_SDRAM_DQ(),
+    .o_SDRAM_DQ(),
+    .o_SDRAM_DQ_OE()
   );
+
+  assign cart_tran_bank0[6]  = uart_txd;
 
 endmodule
