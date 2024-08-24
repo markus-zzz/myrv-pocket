@@ -927,24 +927,6 @@ module core_top (
     end
   endgenerate
 
-  picorv32 #(
-      .COMPRESSED_ISA(1),
-      .ENABLE_IRQ(1),
-      .ENABLE_MUL(1),
-      .ENABLE_DIV(1)
-  ) u_cpu (
-      .clk(clk_8mhz),
-      .resetn(~rst),
-      .mem_valid(cpu_mem_valid),
-      .mem_instr(cpu_mem_instr),
-      .mem_ready(cpu_mem_ready),
-      .mem_addr(cpu_mem_addr),
-      .mem_wdata(cpu_mem_wdata),
-      .mem_wstrb(cpu_mem_wstrb),
-      .mem_rdata(cpu_mem_rdata)
-  );
-
-
   //
   // On Screen Display (OSD)
   //
