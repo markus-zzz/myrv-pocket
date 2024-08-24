@@ -548,44 +548,6 @@ module core_top (
   assign debug_1mhz_ph1_en = clk_8mhz_1mhz_ph1_en;
   assign debug_1mhz_ph2_en = clk_8mhz_1mhz_ph2_en;
 
-  myc64_top u_myc64 (
-      .rst(ph_synced_rst),
-      .clk(clk_8mhz),
-      .i_clk_1mhz_ph1_en(clk_8mhz_1mhz_ph1_en),
-      .i_clk_1mhz_ph2_en(clk_8mhz_1mhz_ph2_en),
-      .o_vid_rgb(c64_color_rgb),
-      .o_vid_hsync(video_hs),
-      .o_vid_vsync(video_vs),
-      .o_vid_en(video_de),
-      .o_wave(sid_wave),
-      .i_keyboard_mask(keyboard_mask),
-      .i_joystick1(joystick1),
-      .i_joystick2(joystick2),
-      .o_bus_addr(c64_bus_addr),
-      .i_rom_basic_data(c64_rom_basic_data),
-      .i_rom_char_data(c64_rom_char_data),
-      .i_rom_kernal_data(c64_rom_kernal_data),
-      .i_ram_main_data(c64_ram_rdata),
-      .o_ram_main_data(c64_ram_wdata),
-      .o_ram_main_we(c64_ram_we),
-      .o_iec_atn_out(iec_atn),
-      .i_iec_data_in(iec_data),
-      .o_iec_data_out(iec_c64_data_out),
-      .i_iec_clock_in(iec_clock),
-      .o_iec_clock_out(iec_c64_clock_out),
-      .i_cart_type(c64_ctrl[6:5]),
-      .o_cart_addr(c64_cart_addr),
-      .o_cart_we(c64_cart_we),
-      .i_cart_data(c64_cart_idata),
-      .o_cart_data(c64_cart_odata),
-      // Debug signals
-      .o_debug_6510_valid(debug_c64_cpu_valid),
-      .o_debug_6510_sync(debug_c64_cpu_sync),
-      .o_debug_6510_addr(debug_c64_cpu_addr),
-      .o_debug_6510_data(debug_c64_cpu_data),
-      .o_debug_6510_regs(debug_c64_cpu_regs)
-  );
-
   wire [15:0] c1541_bus_addr;
   wire [7:0] c1541_ram_rdata;
   wire [7:0] c1541_ram_wdata;
@@ -597,35 +559,6 @@ module core_top (
   wire [6:0] c1541_track_no;
   wire c1541_led_on;
   wire c1541_motor_on;
-
-  my1541_top u_my1541 (
-      .rst(ph_synced_rst),
-      .clk(clk_8mhz),
-      .i_clk_1mhz_ph1_en(clk_8mhz_1mhz_ph1_en),
-      .i_clk_1mhz_ph2_en(clk_8mhz_1mhz_ph2_en),
-      .o_addr(c1541_bus_addr),
-      .i_ram_data(c1541_ram_rdata),
-      .o_ram_data(c1541_ram_wdata),
-      .o_ram_we(c1541_ram_we),
-      .i_rom_data(c1541_rom_data),
-      .o_track_addr(c1541_track_mem_addr),
-      .i_track_data(c1541_track_mem_data),
-      .i_track_len(c1541_track_len),
-      .o_track_no(c1541_track_no),
-      .o_led_on(c1541_led_on),
-      .o_motor_on(c1541_motor_on),
-      .i_iec_atn_in(iec_atn),
-      .i_iec_data_in(iec_data),
-      .o_iec_data_out(iec_1541_data_out),
-      .i_iec_clock_in(iec_clock),
-      .o_iec_clock_out(iec_1541_clock_out),
-      // Debug signals
-      .o_debug_6502_valid(debug_c1541_cpu_valid),
-      .o_debug_6502_sync(debug_c1541_cpu_sync),
-      .o_debug_6502_addr(debug_c1541_cpu_addr),
-      .o_debug_6502_data(debug_c1541_cpu_data),
-      .o_debug_6502_regs(debug_c1541_cpu_regs)
-  );
 
   wire [15:0] c64_bus_addr;
   wire [7:0] c64_ram_rdata;
@@ -964,8 +897,7 @@ module core_top (
   // ROM - CPU code.
   sprom #(
       .aw(11),
-      .dw(32),
-      .MEM_INIT_FILE("bios.vh")
+      .dw(32)
   ) u_rom (
       .clk (clk_8mhz),
       .rst (rst),
