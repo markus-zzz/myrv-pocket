@@ -2,11 +2,11 @@
     "core": {
         "magic": "APF_VER_1",
         "metadata": {
-            "platform_ids": ["c64"],
-            "shortname": "MyC64",
-            "description": "My experimental Commodore 64 emulator",
+            "platform_ids": ["riscv"],
+            "shortname": "MyRV",
+            "description": "My experimental RISC-V system",
             "author": "markus-zzz",
-            "url": "https://github.com/markus-zzz/myc64-pocket",
+            "url": "https://github.com/markus-zzz/myrv-pocket",
             "version": "VERSION",
             "date_release": "DATE_RELEASE"
         },
@@ -20,7 +20,7 @@
             },
             "hardware": {
                 "link_port": false,
-                "cartridge_adapter": -1
+                "cartridge_adapter": 0
             }
         },
         "cores": [
