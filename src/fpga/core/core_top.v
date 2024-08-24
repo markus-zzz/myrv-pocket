@@ -280,6 +280,18 @@ module core_top (
   assign port_tran_sd_dir        = 1'b0;  // SD is input and not used
 
   // tie off the rest of the pins we are not using
+  assign cram0_a                 = 'h0;
+  assign cram0_dq                = {16{1'bZ}};
+  assign cram0_clk               = 0;
+  assign cram0_adv_n             = 1;
+  assign cram0_cre               = 0;
+  assign cram0_ce0_n             = 1;
+  assign cram0_ce1_n             = 1;
+  assign cram0_oe_n              = 1;
+  assign cram0_we_n              = 1;
+  assign cram0_ub_n              = 1;
+  assign cram0_lb_n              = 1;
+
   assign cram1_a                 = 'h0;
   assign cram1_dq                = {16{1'bZ}};
   assign cram1_clk               = 0;
@@ -683,70 +695,7 @@ module core_top (
   wire psram_ren;
   assign psram_ren = clk_32mhz_1mhz_ph12_en & ~(ext_rom_cart_we | c64_cart_we);
 
-  psram #(
-    .CLOCK_SPEED(32)
-  ) u_psram (
-    .clk(clk_32mhz),
-    .bank_sel(1'b0),
-    .addr(ext_rom_cart_we ? ext_addr : c64_cart_addr),
-    .write_en(psram_wen),
-    .data_in(ext_rom_cart_we ? ext_data : c64_cart_odata),
-    .write_high_byte(1'b0),
-    .write_low_byte(1'b1),
-
-    .read_en(psram_ren),
-    .read_avail(),
-    .data_out(c64_cart_idata),
-
-    .busy(),
-
-    // PSRAM signals
-    .cram_a(cram0_a),
-    .cram_dq(cram0_dq),
-    .cram_wait(cram0_wait),
-    .cram_clk(cram0_clk),
-    .cram_adv_n(cram0_adv_n),
-    .cram_cre(cram0_cre),
-    .cram_ce0_n(cram0_ce0_n),
-    .cram_ce1_n(cram0_ce1_n),
-    .cram_oe_n(cram0_oe_n),
-    .cram_we_n(cram0_we_n),
-    .cram_ub_n(cram0_ub_n),
-    .cram_lb_n(cram0_lb_n)
-  );
-
 `endif
-
-  //
-  // Memories for My1541
-  //
-  spram #(
-      .aw(11),
-      .dw(8)
-  ) u_c1541_ram (
-      .clk (clk_8mhz),
-      .rst (rst),
-      .ce  (1'b1),
-      .oe  (1'b1),
-      .addr(c1541_bus_addr),
-      .do  (c1541_ram_rdata),
-      .di  (c1541_ram_wdata),
-      .we  (c1541_ram_we)
-  );
-
-  spram #(
-      .aw(14),
-      .dw(8)
-  ) u_c1541_rom (
-      .clk (clk_8mhz),
-      .rst (rst),
-      .ce  (1'b1),
-      .oe  (1'b1),
-      .addr(ext_rom_1541_we ? ext_addr : c1541_bus_addr),
-      .do  (c1541_rom_data),
-      .di  (ext_data),
-      .we  (ext_rom_1541_we)
-  );
 
   wire cpu_mem_valid;
   wire cpu_mem_instr;
@@ -894,38 +843,6 @@ module core_top (
     end
   end
 
-  // ROM - CPU code.
-  sprom #(
-      .aw(11),
-      .dw(32)
-  ) u_rom (
-      .clk (clk_8mhz),
-      .rst (rst),
-      .ce  (cpu_mem_valid && cpu_mem_addr[31:28] == 4'h0),
-      .oe  (1'b1),
-      .addr(cpu_mem_addr[31:2]),
-      .do  (rom_rdata)
-  );
-
-  // RAM - shared between CPU and OSD. OSD has priority.
-  genvar gi;
-  generate
-    for (gi = 0; gi < 4; gi = gi + 1) begin : ram
-      spram #(
-          .aw(10),
-          .dw(8)
-      ) u_ram (
-          .clk (clk_8mhz),
-          .rst (rst),
-          .ce  (osd_ram_access || (cpu_mem_valid && cpu_mem_addr[31:28] == 4'h1)),
-          .oe  (1'b1),
-          .addr(ram_addr[31:2]),
-          .do  (ram_rdata[(gi+1)*8-1:gi*8]),
-          .di  (ram_wdata[(gi+1)*8-1:gi*8]),
-          .we  (ram_wstrb[gi])
-      );
-    end
-  endgenerate
 
   //
   // On Screen Display (OSD)
