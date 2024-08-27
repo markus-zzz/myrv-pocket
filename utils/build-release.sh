@@ -10,6 +10,11 @@ VERSION=$1
 rm -f MyRV-Pocket.zip
 rm -rf ${STAGING}
 
+pushd src/fpga/core/zzz-rv
+make clean
+make out/soc.v
+popd
+
 quartus_sh --flow compile ./src/fpga/ap_core.qpf
 
 cp -r ${DIST} ${STAGING}

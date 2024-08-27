@@ -1,0 +1,3 @@
+[submodule "src/fpga/core/zzz-rv"]
+	path = src/fpga/core/zzz-rv
+	url = https://github.com/markus-zzz/zzz-rv.git
