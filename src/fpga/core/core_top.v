@@ -19,7 +19,6 @@ module core_top (
     input wire clk_74b,  // mainclk1
 `ifdef __VERILATOR__
     input wire reset_n,
-    input wire clk_32mhz,
 `endif
 
     ///////////////////////////////////////////////////
@@ -346,7 +345,7 @@ module core_top (
 
       .osnotify_inmenu(osnotify_inmenu),
 
-      .i_cpu_clk(clk_8mhz)//,
+      .i_cpu_clk(clk_25mhz)//,
 /*
       .i_cpu_req(cpu_mem_valid && cpu_mem_addr[31:28] == 4'h4),
       .o_cpu_ack_pulse(bridge_ack_pulse),
@@ -410,25 +409,23 @@ module core_top (
   ///////////////////////////////////////////////
 
 
-  wire clk_8mhz;
-  wire clk_8mhz_90deg;
+  wire clk_25mhz;
+  wire clk_25mhz_90deg;
   wire pll_core_locked;
 
 `ifndef __VERILATOR__
-  wire clk_32mhz;
   mf_pllbase mp1 (
       .refclk(clk_74a),
       .rst   (0),
 
-      .outclk_0(clk_8mhz),
-      .outclk_1(clk_8mhz_90deg),
-      .outclk_2(clk_32mhz),
+      .outclk_0(clk_25mhz),
+      .outclk_1(clk_25mhz_90deg),
 
       .locked(pll_core_locked)
   );
 `else
-  assign clk_8mhz = clk_74a;
-  assign clk_8mhz_90deg = clk_74a;
+  assign clk_25mhz = clk_74a;
+  assign clk_25mhz_90deg = clk_74a;
   assign pll_core_locked = 1;
 `endif
 
@@ -440,10 +437,10 @@ module core_top (
   wire bridge_ack_pulse;
 
   wire rst;
-  synch_3 s_reset_n (~reset_n, rst, clk_8mhz);
+  synch_3 s_reset_n (~reset_n, rst, clk_25mhz);
 
-  assign video_rgb_clock = clk_8mhz;
-  assign video_rgb_clock_90 = clk_8mhz_90deg;
+  assign video_rgb_clock = clk_25mhz;
+  assign video_rgb_clock_90 = clk_25mhz_90deg;
   assign video_rgb = 0;
   assign video_skip = 0;
 
@@ -461,7 +458,7 @@ module core_top (
       }),
       .a_dout(  /* NC */),
 
-      .b_clk (clk_8mhz),
+      .b_clk (clk_25mhz),
       .b_wr  (1'b0),
       .b_addr(cpu_mem_addr[31:2]),
       .b_din (32'h0),
@@ -480,7 +477,7 @@ module core_top (
       .a_din (bridge_wr_data),
       .a_dout(dataslot_table_rd_data),
 
-      .b_clk (clk_8mhz),
+      .b_clk (clk_25mhz),
       .b_wr  (1'b0),
       .b_addr(cpu_mem_addr[31:2]),
       .b_din (32'h0),
@@ -490,7 +487,7 @@ module core_top (
   wire uart_txd;
 
   top u_top(
-    .clk(clk_8mhz),
+    .clk(clk_25mhz),
     .rst(rst),
     // GPIO
     .i_gpio(),
@@ -519,7 +516,7 @@ module core_top (
   wire [15:0] dram_dq_out;
   wire dram_dq_oe;
   assign dram_dq = dram_dq_oe ? dram_dq_out : 16'hzzzz;
-  assign dram_clk = clk_8mhz_90deg;
+  assign dram_clk = clk_25mhz_90deg;
 
   assign cart_tran_bank0[6]  = uart_txd;
 
