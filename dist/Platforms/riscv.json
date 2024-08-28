@@ -1,8 +1,8 @@
 {
   "platform": {
     "category": "Computer",
-    "name": "RISCV",
+    "name": "RISC-V",
     "year": 2010,
-    "manufacturer": "Berkley"
+    "manufacturer": "University of California, Berkeley"
   }
 }
