@@ -42,35 +42,117 @@ static uint32_t g_frame_idx = 0;
 
 static std::unique_ptr<Vcore_top> dut;
 
-#if 0
-class SimplePSRAM {
+// sdram, 512mbit 16bit
+//
+// output wire [12:0] dram_a,
+// output wire [ 1:0] dram_ba,
+// inout  wire [15:0] dram_dq,
+// output wire [ 1:0] dram_dqm,
+// output wire        dram_clk,
+// output wire        dram_cke,
+// output wire        dram_ras_n,
+// output wire        dram_cas_n,
+// output wire        dram_we_n,
+class SimpleSDRAM {
 public:
-  SimplePSRAM() {}
+  SimpleSDRAM() {}
   void Tick() {
-    if (dut->clk_32mhz) {
-      if (!dut->cram0_adv_n) {
-        addr_ = (dut->cram0_a << 16) | dut->cram0_dq;
-        assert(addr_ < mem_.size());
-      } else {
-        if (!dut->cram0_we_n) {
-          // Write
-          if (!dut->cram0_ub_n)
-            mem_[addr_] = (mem_[addr_] & 0x00ff) | (dut->cram0_dq & 0xff00);
-          if (!dut->cram0_lb_n)
-            mem_[addr_] = (mem_[addr_] & 0xff00) | (dut->cram0_dq & 0x00ff);
-        } else {
-          // Read
-          dut->cram0_dq = mem_[addr_];
+    if (dut->dram_clk) {
+      switch (state_) {
+      case State::Idle:
+        if (dut->dram_ras_n == 0 && dut->dram_cas_n == 1 &&
+            dut->dram_we_n == 1) { // ACTIVATE
+          row_ = dut->dram_a;
+          std::cout << std::hex << "SDRAM: ACTIVATE row: " << row_ << "\n";
+        } else if (dut->dram_ras_n == 1 && dut->dram_cas_n == 0 &&
+                   dut->dram_we_n == 1) { // READ
+          std::cout << "SDRAM: READ\n";
+          col_ = dut->dram_a;
+          std::cout << std::hex << "SDRAM: READ row: " << row_
+                    << " col: " << col_ << "\n";
+          state_ = State::ReadWait0;
+        } else if (dut->dram_ras_n == 1 && dut->dram_cas_n == 0 &&
+                   dut->dram_we_n == 0) { // WRITE
+          col_ = dut->dram_a;
+          std::cout << std::hex << "SDRAM: WRITE row: " << row_
+                    << " col: " << col_ << "\n";
+          mem_[Addr(0)] = dut->dram_dq;
+          state_ = State::Write1;
+        } else if (dut->dram_ras_n == 0 && dut->dram_cas_n == 1 &&
+                   dut->dram_we_n == 0) { // PRECHARGE
+          std::cout << "SDRAM: PRECHARGE\n";
         }
+        break;
+      //
+      // Write
+      //
+      case State::Write1:
+        mem_[Addr(1)] = dut->dram_dq; // XXX: Use write mask
+        state_ = State::Write2;
+        break;
+      case State::Write2:
+        mem_[Addr(2)] = dut->dram_dq;
+        state_ = State::Write3;
+        break;
+      case State::Write3:
+        mem_[Addr(3)] = dut->dram_dq;
+        state_ = State::Idle;
+        break;
+      //
+      // Read
+      //
+      case State::ReadWait0:
+        state_ = State::ReadWait1;
+        state_ = State::Read0;
+        break;
+      case State::ReadWait1:
+        state_ = State::ReadWait2;
+        break;
+      case State::ReadWait2:
+        state_ = State::Read0;
+        break;
+      case State::Read0:
+        dut->dram_dq = mem_[Addr(0)];
+        state_ = State::Read1;
+        break;
+      case State::Read1:
+        dut->dram_dq = mem_[Addr(1)];
+        state_ = State::Read2;
+        break;
+      case State::Read2:
+        dut->dram_dq = mem_[Addr(2)];
+        state_ = State::Read3;
+        break;
+      case State::Read3:
+        dut->dram_dq = mem_[Addr(3)];
+        state_ = State::Idle;
+        break;
       }
     }
   }
 
 private:
-  std::array<uint16_t, 2 * 1024 * 1024> mem_;
+  enum class State {
+    Idle,
+    Write1,
+    Write2,
+    Write3,
+    ReadWait0,
+    ReadWait1,
+    ReadWait2,
+    Read0,
+    Read1,
+    Read2,
+    Read3
+  } state_ = State::Idle;
+
+  uint32_t Addr(uint32_t offset) { return offset + col_ + (row_ << 9); }
+
+  std::array<uint16_t, 32 * 1024 * 1024> mem_;
   uint32_t addr_ = 0;
+  uint32_t row_;
+  uint32_t col_;
 };
-#endif
 
 class TraceRTL {
 public:
@@ -370,6 +452,8 @@ int main(int argc, char *argv[]) {
 
   bridge.Finalize();
 
+  std::unique_ptr<SimpleSDRAM> sdram = std::make_unique<SimpleSDRAM>();
+
   std::unique_ptr<TraceRTL> trace_rtl;
   if (!trace_path.empty()) {
     trace_rtl = std::make_unique<TraceRTL>(trace_path, trace_modules,
@@ -390,9 +474,12 @@ int main(int argc, char *argv[]) {
       dut->reset_n = 1;
     }
     dut->clk_74a = !dut->clk_74a;
+    dut->eval();
     if (dut->clk_74a) {
       // Handle mockup bridge
       bridge.Tick();
+      // Handle mockup SDRAM
+      sdram->Tick();
       // Frame dumper
       if (framedumper)
         framedumper->Tick();
