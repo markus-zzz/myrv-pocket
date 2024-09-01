@@ -42,6 +42,34 @@ static uint32_t g_frame_idx = 0;
 
 static std::unique_ptr<Vcore_top> dut;
 
+class SimpleUART {
+public:
+  SimpleUART(const uint8_t &rxd) : rxd_(rxd) {}
+  void Tick() {
+    switch (state_) {
+    case State::Idle:
+      if (rxd_ == 0) {
+        rx_cntr_ = 0;
+        state_ = State::Receive;
+      }
+      break;
+    case State::Receive:
+      rx_byte_ = (rx_byte_ >> 1) | (rxd_ << 7);
+      if (++rx_cntr_ == 8) {
+        fprintf(stderr, "%c", rx_byte_);
+        state_ = State::Idle;
+      }
+      break;
+    }
+  }
+
+private:
+  enum class State { Idle, Receive } state_ = State::Idle;
+  const uint8_t &rxd_;
+  uint8_t rx_cntr_;
+  uint8_t rx_byte_;
+};
+
 // sdram, 512mbit 16bit
 //
 // output wire [12:0] dram_a,
@@ -453,6 +481,8 @@ int main(int argc, char *argv[]) {
   bridge.Finalize();
 
   std::unique_ptr<SimpleSDRAM> sdram = std::make_unique<SimpleSDRAM>();
+  std::unique_ptr<SimpleUART> uart =
+      std::make_unique<SimpleUART>(dut->debug_uart_tx);
 
   std::unique_ptr<TraceRTL> trace_rtl;
   if (!trace_path.empty()) {
@@ -480,6 +510,8 @@ int main(int argc, char *argv[]) {
       bridge.Tick();
       // Handle mockup SDRAM
       sdram->Tick();
+      // Handle UART
+      uart->Tick();
       // Frame dumper
       if (framedumper)
         framedumper->Tick();
