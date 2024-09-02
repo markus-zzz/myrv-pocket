@@ -19,6 +19,7 @@ module core_top (
     input wire clk_74b,  // mainclk1
 `ifdef __VERILATOR__
     input wire reset_n,
+    output wire debug_uart_tx,
 `endif
 
     ///////////////////////////////////////////////////
@@ -345,16 +346,14 @@ module core_top (
 
       .osnotify_inmenu(osnotify_inmenu),
 
-      .i_cpu_clk(clk_25mhz)//,
-/*
-      .i_cpu_req(cpu_mem_valid && cpu_mem_addr[31:28] == 4'h4),
-      .o_cpu_ack_pulse(bridge_ack_pulse),
+      .i_cpu_clk(clk_25mhz),
+      .i_cpu_req(ext_wb_stb && ext_wb_adr[23:20] == 4'h4),
+      .o_cpu_ack_pulse(bridge_regs_ack),
 
-      .i_cpu_addr (cpu_mem_addr),
-      .i_cpu_wdata(cpu_mem_wdata),
-      .i_cpu_wstrb(cpu_mem_wstrb),
-      .o_cpu_rdata(bridge_rdata)
-*/
+      .i_cpu_addr (ext_wb_adr),
+      .i_cpu_wdata(ext_wb_dat_w),
+      .i_cpu_wstrb({4{ext_wb_we}}),
+      .o_cpu_rdata(bridge_regs_rdata)
   );
 
   //
@@ -430,11 +429,10 @@ module core_top (
 `endif
 
 
-  wire [31:0] bridge_rdata;
+  wire bridge_regs_ack;
+  wire [31:0] bridge_regs_rdata;
   wire [31:0] bridge_dpram_rdata;
 
-
-  wire bridge_ack_pulse;
 
   wire rst;
   synch_3 s_reset_n (~reset_n, rst, clk_25mhz);
@@ -443,8 +441,6 @@ module core_top (
   assign video_rgb_clock_90 = clk_25mhz_90deg;
   assign video_rgb = 0;
   assign video_skip = 0;
-
-  wire [31:0] cpu_mem_addr;
 
   bram_block_dp #(
       .DATA(32),
@@ -460,7 +456,7 @@ module core_top (
 
       .b_clk (clk_25mhz),
       .b_wr  (1'b0),
-      .b_addr(cpu_mem_addr[31:2]),
+      .b_addr(ext_wb_adr[31:2]),
       .b_din (32'h0),
       .b_dout(bridge_dpram_rdata)
   );
@@ -479,12 +475,41 @@ module core_top (
 
       .b_clk (clk_25mhz),
       .b_wr  (1'b0),
-      .b_addr(cpu_mem_addr[31:2]),
+      .b_addr(ext_wb_adr[31:2]),
       .b_din (32'h0),
       .b_dout(dataslot_table_rd_data_cpu)
   );
 
+  always @* begin
+    casex(ext_wb_adr)
+      32'hxx4x_xxxx: ext_wb_dat_r = bridge_regs_rdata;
+      32'hxx7x_xxxx: ext_wb_dat_r = bridge_dpram_rdata;
+      32'hxx9x_xxxx: ext_wb_dat_r = dataslot_table_rd_data_cpu;
+      default: ext_wb_dat_r = 0;
+    endcase
+  end
+  always @(posedge clk_25mhz) begin
+    if (rst) begin
+      ext_wb_ack <= 0;
+    end
+    else begin
+      casex(ext_wb_adr)
+        32'hxx4x_xxxx: ext_wb_ack <= bridge_regs_ack;
+        32'hxx7x_xxxx: ext_wb_ack <= ~ext_wb_ack & ext_wb_stb;
+        32'hxx9x_xxxx: ext_wb_ack <= ~ext_wb_ack & ext_wb_stb;
+        default: ext_wb_ack <= 0;
+      endcase
+    end
+  end
+
   wire uart_txd;
+
+  wire ext_wb_stb;
+  reg ext_wb_ack;
+  wire ext_wb_we;
+  wire [31:0] ext_wb_adr;
+  wire [31:0] ext_wb_dat_w;
+  reg [31:0] ext_wb_dat_r;
 
   top u_top(
     .clk(clk_25mhz),
@@ -510,14 +535,27 @@ module core_top (
     .o_SDRAM_DQM(dram_dqm),
     .i_SDRAM_DQ(dram_dq),
     .o_SDRAM_DQ(dram_dq_out),
-    .o_SDRAM_DQ_OE(dram_dq_oe)
+    .o_SDRAM_DQ_OE(dram_dq_oe),
+    // External WishBone
+    .o_ext_wb_adr(ext_wb_adr),
+    .o_ext_wb_dat(ext_wb_dat_w),
+    .o_ext_wb_sel(),
+    .o_ext_wb_cti(),
+    .o_ext_wb_we(ext_wb_we),
+    .o_ext_wb_stb(ext_wb_stb),
+    .o_ext_wb_cyc(),
+    .i_ext_wb_dat(ext_wb_dat_r),
+    .i_ext_wb_ack(ext_wb_ack)
   );
 
   wire [15:0] dram_dq_out;
   wire dram_dq_oe;
   assign dram_dq = dram_dq_oe ? dram_dq_out : 16'hzzzz;
-  assign dram_clk = clk_25mhz_90deg;
+  assign dram_clk = clk_25mhz;
 
   assign cart_tran_bank0[6]  = uart_txd;
+`ifdef __VERILATOR__
+    assign debug_uart_tx = uart_txd;
+`endif
 
 endmodule
