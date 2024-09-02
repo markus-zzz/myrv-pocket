@@ -478,6 +478,8 @@ int main(int argc, char *argv[]) {
   //
   BridgeHandler bridge;
 
+  bridge.RegisterDataSlot(100, "image.bin");
+
   bridge.Finalize();
 
   std::unique_ptr<SimpleSDRAM> sdram = std::make_unique<SimpleSDRAM>();
