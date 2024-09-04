@@ -33,10 +33,6 @@
 #include <string.h>
 #include <vector>
 
-#define CRT_SLOT_ID 0
-#define PRG_SLOT_ID 1
-#define G64_SLOT_ID 2
-
 static uint64_t g_ticks = 0;
 static uint32_t g_frame_idx = 0;
 
@@ -90,25 +86,27 @@ public:
       case State::Idle:
         if (dut->dram_ras_n == 0 && dut->dram_cas_n == 1 &&
             dut->dram_we_n == 1) { // ACTIVATE
-          row_ = dut->dram_a;
-          std::cout << std::hex << "SDRAM: ACTIVATE row: " << row_ << "\n";
+          row_ = dut->dram_a & 0x1fff;
+          //std::cout << std::hex << "SDRAM: ACTIVATE row: " << row_ << "\n";
         } else if (dut->dram_ras_n == 1 && dut->dram_cas_n == 0 &&
                    dut->dram_we_n == 1) { // READ
-          std::cout << "SDRAM: READ\n";
-          col_ = dut->dram_a;
-          std::cout << std::hex << "SDRAM: READ row: " << row_
-                    << " col: " << col_ << "\n";
+          //std::cout << "SDRAM: READ\n";
+          ba_ = dut->dram_ba;
+          col_ = dut->dram_a & 0x3ff;
+          //std::cout << std::hex << "SDRAM: READ row: " << row_
+           //         << " col: " << col_ << "\n";
           state_ = State::ReadWait0;
         } else if (dut->dram_ras_n == 1 && dut->dram_cas_n == 0 &&
                    dut->dram_we_n == 0) { // WRITE
-          col_ = dut->dram_a;
-          std::cout << std::hex << "SDRAM: WRITE row: " << row_
-                    << " col: " << col_ << "\n";
+          ba_ = dut->dram_ba;
+          col_ = dut->dram_a & 0x3ff;
+          //std::cout << std::hex << "SDRAM: WRITE row: " << row_
+           //         << " col: " << col_ << "\n";
           mem_[Addr(0)] = dut->dram_dq;
           state_ = State::Write1;
         } else if (dut->dram_ras_n == 0 && dut->dram_cas_n == 1 &&
                    dut->dram_we_n == 0) { // PRECHARGE
-          std::cout << "SDRAM: PRECHARGE\n";
+          //std::cout << "SDRAM: PRECHARGE\n";
         }
         break;
       //
@@ -174,12 +172,16 @@ private:
     Read3
   } state_ = State::Idle;
 
-  uint32_t Addr(uint32_t offset) { return offset + col_ + (row_ << 9); }
+  uint32_t Addr(uint32_t offset) {
+    uint32_t addr = offset + col_ + (row_ << 10) + (ba_ << 23);
+    assert(addr < mem_.size());
+    return addr;
+  }
 
   std::array<uint16_t, 32 * 1024 * 1024> mem_;
-  uint32_t addr_ = 0;
-  uint32_t row_;
-  uint32_t col_;
+  uint32_t ba_;  // 2 bits
+  uint32_t row_; // 13 bits
+  uint32_t col_; // 10 bits
 };
 
 class TraceRTL {
