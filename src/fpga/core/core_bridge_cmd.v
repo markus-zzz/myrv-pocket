@@ -53,9 +53,9 @@ module core_bridge_cmd (
 
   wire        endian_little_s;
   synch_3 s01 (
-      bridge_endian_little,
-      endian_little_s,
-      clk
+      .i(bridge_endian_little),
+      .o(endian_little_s),
+      .clk(clk)
   );
 
   always @(*) begin

@@ -17,7 +17,7 @@ module core_top (
 
     input wire clk_74a,  // mainclk1
     input wire clk_74b,  // mainclk1
-`ifdef __VERILATOR__
+`ifdef __SIMULATION__
     input wire reset_n,
     output wire debug_uart_tx,
 `endif
@@ -313,7 +313,7 @@ module core_top (
   //
   // host/target command handler
   //
-`ifndef __VERILATOR__
+`ifndef __SIMULATION__
   wire reset_n;  // driven by host commands, can be used as core-wide reset
 `endif
   wire [31:0] cmd_bridge_rd_data;
@@ -330,7 +330,7 @@ module core_top (
   // synchronous to clk_74a
   core_bridge_cmd icb (
       .clk                 (clk_74a),
-`ifndef __VERILATOR__
+`ifndef __SIMULATION__
       .reset_n             (reset_n),
 `endif
       .bridge_endian_little(bridge_endian_little),
@@ -412,7 +412,7 @@ module core_top (
   wire clk_25mhz_90deg;
   wire pll_core_locked;
 
-`ifndef __VERILATOR__
+`ifndef __SIMULATION__
   mf_pllbase mp1 (
       .refclk(clk_74a),
       .rst   (0),
@@ -435,7 +435,7 @@ module core_top (
 
 
   wire rst;
-  synch_3 s_reset_n (~reset_n, rst, clk_25mhz);
+  synch_3 s_reset_n (.i(~reset_n), .o(rst), .clk(clk_25mhz));
 
   assign video_rgb_clock = clk_25mhz;
   assign video_rgb_clock_90 = clk_25mhz_90deg;
@@ -532,7 +532,7 @@ module core_top (
     .o_SDRAM_RASn(dram_ras_n),
     .o_SDRAM_A(dram_a),
     .o_SDRAM_BA(dram_ba),
-    .o_SDRAM_DQM(dram_dqm),
+    .o_SDRAM_DQM(dram_dqm_out),
     .i_SDRAM_DQ(dram_dq),
     .o_SDRAM_DQ(dram_dq_out),
     .o_SDRAM_DQ_OE(dram_dq_oe),
@@ -549,12 +549,41 @@ module core_top (
   );
 
   wire [15:0] dram_dq_out;
+  wire [1:0] dram_dqm_out;
   wire dram_dq_oe;
   assign dram_dq = dram_dq_oe ? dram_dq_out : 16'hzzzz;
-  assign dram_clk = clk_25mhz;
+  assign dram_dqm = dram_dq_oe ? dram_dqm_out : 2'bzz;
+`ifdef __SIMULATION__
+  assign dram_clk = clk_25mhz; // XXX: Should be inverted but that causes read of undef values that halt the cpu (it seems)
+`else
+  altddio_out
+  #(
+  	.extend_oe_disable("OFF"),
+  	.intended_device_family("Cyclone V"),
+  	.invert_output("OFF"),
+  	.lpm_hint("UNUSED"),
+  	.lpm_type("altddio_out"),
+  	.oe_reg("UNREGISTERED"),
+  	.power_up_high("OFF"),
+  	.width(1)
+  )
+  sdramclk_ddr
+  (
+  	.datain_h(1'b0),
+  	.datain_l(1'b1),
+  	.outclock(clk_25mhz),
+  	.dataout(dram_clk),
+  	.aclr(1'b0),
+  	.aset(1'b0),
+  	.oe(1'b1),
+  	.outclocken(1'b1),
+  	.sclr(1'b0),
+  	.sset(1'b0)
+  );
+`endif
 
   assign cart_tran_bank0[6]  = uart_txd;
-`ifdef __VERILATOR__
+`ifdef __SIMULATION__
     assign debug_uart_tx = uart_txd;
 `endif
 

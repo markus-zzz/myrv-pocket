@@ -12,7 +12,7 @@ OBJ_DIR=obj_dir
 rm -rf $OBJ_DIR
 
 /home/markus/work/install/bin/verilator --trace-fst -cc +1364-2005ext+v --top-module core_top core/spram.v core/sprom.v core/core_top.v core/core_bridge_cmd.v apf/common.v core/soc.v -Wno-fatal \
-+define+__VERILATOR__=1 -CFLAGS -O3
++define+__SIMULATION__=1 -CFLAGS -O3
 
 VERILATOR_ROOT=/home/markus/work/install/share/verilator
 cd $OBJ_DIR; make -f Vcore_top.mk; cd ..
